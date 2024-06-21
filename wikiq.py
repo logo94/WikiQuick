@@ -2,7 +2,7 @@ from csv import reader, writer
 import tkinter as tk
 from tkinter import filedialog
 import webbrowser
-import subprocess, os, platform
+import subprocess, os, platform, sys
 
 
 def main():
@@ -42,11 +42,13 @@ def main():
         os.startfile(txt_file)
     else:                                   # linux variants
         subprocess.call(('xdg-open', txt_file))
-       
-    
-    
+        
     return
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as err:
+        print(str(err))
+        sys.exit()
