@@ -8,7 +8,9 @@ import subprocess, os, platform, sys
 def main():
     
     file = filedialog.askopenfilename(title = "Seleziona file",filetypes= (("Tutti i file","*.*"),("CSV","*.csv")), multiple=False)
-    new_file = file.split('.')[0] + '_updated.csv'
+    filename = os.path.basename(file)
+    filepath = os.path.dirname(file)
+    new_file = os.path.join(filepath, filename.split('.')[0] + '_updated.csv')
 
     with open(file, 'r', encoding='utf-8') as csv_file:
         with open(new_file, 'w+', encoding='utf-8', newline='') as write_file:
@@ -33,7 +35,8 @@ def main():
                 if str(column) != 'qid':
                     scriba.writerow(line)
 
-    txt_file = new_file.split('.')[0] + '.txt'
+    out_filename = os.path.basename(new_file)
+    txt_file = os.path.join(filepath, out_filename.split('.')[0] + '.txt')
     os.rename(new_file, txt_file)
 
     if platform.system() == 'Darwin':       # macOS
