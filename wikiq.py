@@ -1,7 +1,6 @@
 from csv import reader, writer
 import tkinter as tk
 from tkinter import filedialog
-import webbrowser
 import subprocess, os, platform, sys
 
 
