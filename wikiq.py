@@ -26,7 +26,7 @@ def main():
                         line.append('')
                     else:
                         if not column.startswith('Q'):
-                            column = '"' + str(column) + '"'
+                            column = ''.join(('"', str(column), '"'))
                             line.append(str(column))
                         else:
                             line.append(str(column))
