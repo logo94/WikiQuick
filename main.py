@@ -1,6 +1,4 @@
-# Python script to convert CSV files to QuickStatements TSV format
-# Author: logo94
-# License: GPL-3.0 license
+#!/usr/bin/env python3
 
 # Imports
 import os, sys, re, csv, io
