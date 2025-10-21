@@ -45,7 +45,7 @@ Windows
 doppio click sul file
 
 MacOS
-
+python3 main.py
 ```
 
 2. Selezionare il file CSV da processare
