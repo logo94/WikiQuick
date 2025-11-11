@@ -10,6 +10,14 @@ Quickstatements richiede la normalizzazione di alcuni valori per la corretta imp
 Per esempio:
 
 ```
+|       Lit       |
+------------------- --> LAST|Lit|"Dante Alighieri"
+| Dante Alighieri |   
+
+|             frwiki             |
+--------------------------------- --> LAST|frwiki:Temple de Chêne-Bougeries
+| Temple de Ch%C3%AAne-Bougeries |   
+
 | P21 |
 ------- --> LAST|P21|Q12
 | Q12 |    
@@ -24,6 +32,10 @@ Si fornisce di seguito la lista di tipi di dato disponibili:
 
 | Tipo | Descrizione | Dato originale | Dato normalizzato |
 | ---- | ----------- | -------------- | ----------------- |
+| Lxx | Label | Hello world | "Hello world" |
+| Dxx | Description | Hello world | "Hello world" |
+| Axx | Alias | Hello world | "Hello world" |
+| xxwiki | Wiki link | https://it.wikipedia.org/wiki/Dante_Alighieri | "Dante Alighieri" |
 | PXX | Elemento | Q123 | Q123 |
 | PXX_STR | Stringa | Q123 | "Q123" |
 | PXX_NUM | Numero | 12,53 | 12.53 |

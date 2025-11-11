@@ -8,6 +8,7 @@ from tkinter import filedialog
 import subprocess
 import platform
 from typing import Optional
+from urllib.parse import unquote 
 
 # Function to format date strings into QuickStatements date format
 def format_date(date_string):
@@ -62,6 +63,11 @@ def csv_to_qs():
         'Dit', 'Den', 'Dfr', 'Dde'
     ]
     
+    SITELINK_FIELDS = [
+        'itwiki', 'enwiki', 'frwiki', 'dewiki', 
+        'commonswiki', 'itwikisource', 'enwikisource'
+    ]
+    
     # File selection dialog
     root = tk.Tk()
     root.withdraw()
@@ -100,6 +106,8 @@ def csv_to_qs():
                 
                 if name in STRING_FIELDS:
                     cell_type = 'string'
+                elif name in SITELINK_FIELDS:
+                    cell_type = 'sitelink'
                 elif name.endswith('_STR'):
                     name = name[:-4]
                     cell_type = 'string'
@@ -146,6 +154,18 @@ def csv_to_qs():
                     prefix = qid_value if qid_value else 'LAST'
                     
                     formatted_value = value
+                    
+                    # Handle sitelinks
+                    if data['cell_type'] == 'sitelink':
+                        title = unquote(value)
+                        if title.startswith('http://') or title.startswith('https://'):
+                            title = title.split('/')[-1]
+                        
+                        title = title.replace('_', ' ')
+
+                        qs_command = f'{prefix}|{col_name}:{title}'
+                        qs_commands.append(qs_command)
+                        continue 
                     
                     # Handle other columns
                     if data['cell_type'] == 'string':
