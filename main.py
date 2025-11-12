@@ -9,6 +9,7 @@ import subprocess
 import platform
 from typing import Optional
 from urllib.parse import unquote 
+from csv import Sniffer
 
 # Function to format date strings into QuickStatements date format
 def format_date(date_string):
@@ -52,6 +53,16 @@ def format_date(date_string):
 
     return iso_date
 
+# Function to detect CSV delimiter
+def detect_delimiter(content: str) -> str:
+    try:
+        sample = content[:min(len(content), 1024)]
+        dialect = Sniffer().sniff(sample)
+        return dialect.delimiter
+    except:
+        print("Impossibile rilevare il delimitatore, si usa il ';' (punto e virgola) come fallback.")
+        return ';'
+
 
 # Function to convert CSV to QuickStatements TSV
 def csv_to_qs():
@@ -84,12 +95,14 @@ def csv_to_qs():
 
     # Read the input CSV file
     with open(file, 'r', encoding='utf-8') as f:
-        with open(new_file, 'w', encoding='utf-8', newline='') as write_file:
         
-            # Normalize BOM and read content
-            content = f.read().lstrip('\ufeff')
-            csv_file = io.StringIO(content)
-            reader = csv.reader(csv_file)
+        # Normalize BOM and read content
+        content = f.read().lstrip('\ufeff')
+        delimiter = detect_delimiter(content)
+        csv_file = io.StringIO(content)
+        reader = csv.reader(csv_file, delimiter=delimiter)
+        
+        with open(new_file, 'w', encoding='utf-8', newline='') as write_file:
             
             # Header mapping
             header_map = {}
