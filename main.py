@@ -145,6 +145,8 @@ def csv_to_qs():
                 
                 qid_value = None
                 qs_commands = []
+                main_statement = ""
+                qualifiers = []
                 
                 # Process each cell in the row
                 for column_index, cell in enumerate(row):
@@ -161,46 +163,55 @@ def csv_to_qs():
 
                     # Handle QID
                     if col_name.lower() == 'qid':
+                        if value.startswith('http'):
+                            value = value.split('/')[-1]
                         qid_value = value
                         continue
                     
-                    prefix = qid_value if qid_value else 'LAST'
+                    if qid_value:
+                        prefix = qid_value
+                    else:
+                        prefix = 'LAST'
                     
                     formatted_value = value
                     
                     # Handle sitelinks
                     if data['cell_type'] == 'sitelink':
-                        title = unquote(value)
-                        if title.startswith('http://') or title.startswith('https://'):
-                            title = title.split('/')[-1]
-                        
-                        title = title.replace('_', ' ')
+                        title = unquote(value).replace('_', ' ')
+                        qs_commands.append(f'{prefix}|sitelink|{col_name}|"{title}"')
+                        continue
 
-                        qs_command = f'{prefix}|{col_name}:{title}'
-                        qs_commands.append(qs_command)
-                        continue 
-                    
                     # Handle other columns
                     if data['cell_type'] == 'string':
                         formatted_value = f'"{value}"'
                     elif data['cell_type'] == 'date':
-                        formatted_value = format_date(value) 
+                        formatted_value = format_date(value)
                         if not formatted_value: continue
                     elif data['cell_type'] == 'number':
                         formatted_value = value.replace(',', '.')
                     elif data['cell_type'] == 'coordinates':
                         formatted_value = f'@{value}'
-                        
+
                     if not formatted_value:
                         continue
-
-                    qs_command = f'{prefix}|{col_name}|{formatted_value}'
-                    qs_commands.append(qs_command)
-
-                # Write the processed row to the output file
-                start_command = qid_value if qid_value else 'CREATE'
+                    
+                    # Add qualifiers to last property    
+                    if col_name.startswith('S'):
+                        qs_qualifier = f'|{col_name}|{formatted_value}'
+                        qualifiers.append(qs_qualifier)
+                        
+                    else:
+                        if not main_statement:
+                            main_statement = f'{prefix}|{col_name}|{formatted_value}'
+                        else:
+                            qs_commands.append(f'{prefix}|{col_name}|{formatted_value}')
                 
-                write_file.write(f'{start_command}\n')
+                if not qid_value:
+                    write_file.write('CREATE\n')
+                    
+                if main_statement:
+                    full_command = main_statement + "".join(qualifiers)
+                    write_file.write(f'{full_command}\n')
                 
                 for cmd in qs_commands:
                     write_file.write(f'{cmd}\n')
