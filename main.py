@@ -23,6 +23,23 @@ def format_date(date_string):
     
     clean_date = date_string.strip().replace('/', '-').replace('.', '-')
     
+    # Date parziali con X: 15XX (secolo), 152X (decennio), 1XXX (millennio)
+    x_match = re.fullmatch(r'(\d+)(X+)', clean_date, re.IGNORECASE)
+    if x_match:
+        digits = x_match.group(1)
+        total = len(digits) + len(x_match.group(2))
+        if total != 4:
+            print(f"ATTENZIONE: '{date_string}' — un anno con X deve avere 4 cifre totali (es. 15XX). Ignorato.")
+            return ''
+        # precisione in base alle cifre NOTE: 4->9, 3->8, 2->7, 1->6
+        prec_by_known = {4: 9, 3: 8, 2: 7, 1: 6}
+        precision = prec_by_known.get(len(digits))
+        if precision is None:
+            print(f"ATTENZIONE: '{date_string}' — troppe X. Ignorato.")
+            return ''
+        year = digits.ljust(4, '0')          # "15" -> "1500", "152" -> "1520"
+        return f"+{year}-00-00T00:00:00Z/{precision}"
+    
     # Year only
     if re.match(r'^\d{1,4}$', clean_date):
         return f"+{clean_date.zfill(4)}-00-00T00:00:00Z/9"

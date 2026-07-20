@@ -172,6 +172,58 @@
 
     .row-actions { display: flex; gap: 0.6rem; margin-top: 0.9rem; flex-wrap: wrap; }
 
+    /* Formatting guide (collapsible) */
+    details.guide {
+        margin-top: 0.9rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--code-bg);
+    }
+    details.guide > summary {
+        cursor: pointer;
+        padding: 0.6rem 0.85rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--accent);
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        user-select: none;
+    }
+    details.guide > summary::-webkit-details-marker { display: none; }
+    details.guide > summary::before {
+        content: "▸";
+        font-size: 0.7rem;
+        transition: transform 0.15s ease;
+    }
+    details.guide[open] > summary::before { transform: rotate(90deg); }
+    details.guide .guide-body {
+        padding: 0.25rem 1rem 0.9rem;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: var(--ink-soft);
+    }
+    details.guide .guide-body dl { margin: 0; }
+    details.guide .guide-body dt {
+        font-weight: 600;
+        color: var(--ink);
+        margin-top: 0.7rem;
+    }
+    details.guide .guide-body dt:first-child { margin-top: 0; }
+    details.guide .guide-body dd { margin: 0.15rem 0 0; }
+    details.guide code {
+        font-family: var(--mono);
+        background: var(--panel);
+        padding: 0.05rem 0.3rem;
+        border-radius: 3px;
+        font-size: 0.9em;
+        border: 1px solid var(--line);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        details.guide > summary::before { transition: none; }
+    }
+
     button.act {
         font-family: var(--sans);
         font-size: 0.85rem;
@@ -333,6 +385,64 @@
         <div class="row-actions">
         <button class="act" id="parse-btn">Read columns</button>
         </div>
+
+        <details class="guide">
+        <summary>Formatting guide</summary>
+        <div class="guide-body">
+            <dl>
+            <dt>Column headers</dt>
+            <dd>
+                The first row holds the property IDs (<code>P31</code>, <code>P569</code>…) or the
+                reserved names below. A column named <code>qid</code> sets the item to edit; leave it
+                empty to create a new item (<code>CREATE</code>).
+            </dd>
+
+            <dt>Labels, aliases, descriptions</dt>
+            <dd>
+                <code>Lit Len Lfr Lde</code> (labels), <code>Ait Aen …</code> (aliases),
+                <code>Dit Den …</code> (descriptions). Multiple aliases in one cell are separated by
+                <code>|</code> and become separate entries.
+            </dd>
+
+            <dt>Sitelinks</dt>
+            <dd><code>itwiki enwiki frwiki dewiki commonswiki itwikisource enwikisource</code>. The page title is used as-is (underscores become spaces).</dd>
+
+            <dt>Monolingual text</dt>
+            <dd>Header pattern <code>Pxx_MONO_it</code> — the language code goes in the header, the value in the cell. Produces <code>it:"…"</code>.</dd>
+
+            <dt>Dates — point in time</dt>
+            <dd>
+                Full dates: <code>1523</code>, <code>1523-06</code>, <code>1523-06-15</code> (also
+                <code>15/06/1523</code>). Partial dates use <code>X</code> for the unknown trailing
+                digits: <code>152X</code> (decade), <code>15XX</code> (century), <code>1XXX</code>
+                (millennium). The precision is inferred from how many digits are known — this stays a
+                point-in-time value, <em>not</em> an EDTF string.
+            </dd>
+
+            <dt>Dates — EDTF</dt>
+            <dd>
+                Free date forms are normalized to <code>YYYY-MM-DD</code> when recognized
+                (<code>15 Jan 2024</code>, <code>2024/03/07</code>). The output is a quoted string.
+                Unrecognized values are passed through unchanged.
+            </dd>
+
+            <dt>Numbers, coordinates, items</dt>
+            <dd>
+                Numbers accept a comma or dot decimal separator. Coordinates:
+                <code>latitude,longitude</code>. Items: a QID (<code>Q42</code>) or a full entity URL.
+            </dd>
+
+            <dt>Qualifiers</dt>
+            <dd>
+                Columns whose header starts with <code>S</code> (e.g. <code>S1</code>) attach as
+                qualifiers to the statement immediately before them in the row.
+            </dd>
+
+            <dt>Type suffixes</dt>
+            <dd>Force a type from the header: <code>_STR _NUM _DATE _EDTF _GEO</code>. Any other column lets you pick the type in step 2.</dd>
+            </dl>
+        </div>
+        </details>
     </div>
 
     <!-- STEP 2 -->
@@ -351,11 +461,9 @@
     <div class="msgs" id="msgs"></div>
 
     <footer>
-        Auto-recognized conventions: labels <code>Lit Len Lfr Lde</code>,
-        aliases <code>Ait…</code> (multiple values split on <code>|</code>), descriptions <code>Dit…</code>,
-        sitelinks <code>itwiki enwiki …</code>, monolingual text <code>Pxx_MONO_it</code> (language in the header),
-        the <code>qid</code> column, and qualifiers prefixed with <code>S</code> (attached to the statement they follow).
-        Suffixes <code>_STR _NUM _DATE _EDTF _GEO</code> force a type; all other columns take the type you choose.
+        Everything runs locally in your browser. See the <strong>Formatting guide</strong> above for
+        accepted column names and value formats. Free &amp; open source ·
+        <a href="https://github.com/logo94/WikiQuick" target="_blank" rel="noopener" style="color:var(--accent)">GitHub</a>
     </footer>
     </div>
 
