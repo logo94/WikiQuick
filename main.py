@@ -24,9 +24,8 @@ def format_date(date_string):
     clean_date = date_string.strip().replace('/', '-').replace('.', '-')
     
     # Year only
-    if re.match(r'^\d{4}$', clean_date):
-        year = clean_date
-        return f"+{year}-00-00T00:00:00Z/9"
+    if re.match(r'^\d{1,4}$', clean_date):
+        return f"+{clean_date.zfill(4)}-00-00T00:00:00Z/9"
     
     # Year-Month / Year-Month-Day
     dt: Optional[datetime] = None
@@ -52,6 +51,35 @@ def format_date(date_string):
         iso_date = f"+{dt.strftime('%Y-%m-%d')}T00:00:00Z/11"
 
     return iso_date
+
+def format_edtf(date_str: str) -> str:
+    
+    FORMATS = (
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%d.%m.%Y",
+        "%d/%m/%y",
+        "%d-%m-%y",
+        "%Y%m%d",
+        "%d %m %Y",
+        "%d %b %Y",   # 15 Jan 2024
+        "%d %B %Y",   # 15 January 2024
+        "%b %d %Y",   # Jan 15 2024
+        "%B %d %Y",   # January 15 2024
+    )
+    
+    date_str = date_str.strip()
+
+    for fmt in FORMATS:
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    return date_str
 
 # Function to detect CSV delimiter
 def detect_delimiter(content: str) -> str:
@@ -124,15 +152,23 @@ def csv_to_qs():
                 elif name.endswith('_STR'):
                     name = name[:-4]
                     cell_type = 'string'
+                elif "_MONO" in name:
+                    language_code = col_name.split('_')[-1]
+                    name = name[:-8]
+                    cell_type = 'monolingual_string'
                 elif name.endswith('_NUM'):
                     name = name[:-4]
                     cell_type = 'number'
                 elif name.endswith('_DATE'):
                     name = name[:-5]
                     cell_type = 'date'
+                elif name.endswith('_EDTF'):
+                    name = name[:-5]
+                    cell_type = 'edtf'
                 elif name.endswith('_GEO'):
                     name = name[:-4]
                     cell_type = 'coordinates'
+                
 
                 header_map[idx] = {'name': name, 'cell_type': cell_type}
             
@@ -146,9 +182,8 @@ def csv_to_qs():
                 qid_value = None
                 qs_commands = []
                 main_statement = ""
-                qualifiers = []
-                
-                # Process each cell in the row
+                last_real_idx = None  # indice in qs_commands dell'ultimo statement non-alias
+
                 for column_index, cell in enumerate(row):
                     
                     if column_index not in header_map:
@@ -161,32 +196,38 @@ def csv_to_qs():
                     if not value:
                         continue
 
-                    # Handle QID
                     if col_name.lower() == 'qid':
                         if value.startswith('http'):
                             value = value.split('/')[-1]
                         qid_value = value
                         continue
                     
-                    if qid_value:
-                        prefix = qid_value
-                    else:
-                        prefix = 'LAST'
-                    
+                    prefix = qid_value if qid_value else 'LAST'
                     formatted_value = value
-                    
-                    # Handle sitelinks
+
                     if data['cell_type'] == 'sitelink':
                         title = unquote(value).replace('_', ' ')
                         qs_commands.append(f'{prefix}|sitelink|{col_name}|"{title}"')
+                        last_real_idx = len(qs_commands) - 1
                         continue
 
-                    # Handle other columns
                     if data['cell_type'] == 'string':
+                        if col_name.startswith('A') and '|' in value:
+                            for alias in value.split('|'):
+                                alias = alias.strip()
+                                if alias:
+                                    qs_commands.append(f'{prefix}|{col_name}|"{alias}"')
+                            continue  # alias: NON aggiorna last_real_idx
                         formatted_value = f'"{value}"'
+                        
+                    elif data['cell_type'] == 'monolingual_string':
+                        formatted_value = f'{language_code}:"{value}"'
                     elif data['cell_type'] == 'date':
                         formatted_value = format_date(value)
-                        if not formatted_value: continue
+                        if not formatted_value:
+                            continue
+                    elif data['cell_type'] == 'edtf':
+                        formatted_value = f'"{format_edtf(value)}"'
                     elif data['cell_type'] == 'number':
                         formatted_value = value.replace(',', '.')
                     elif data['cell_type'] == 'coordinates':
@@ -194,25 +235,28 @@ def csv_to_qs():
 
                     if not formatted_value:
                         continue
-                    
-                    # Add qualifiers to last property    
+
                     if col_name.startswith('S'):
-                        qs_qualifier = f'|{col_name}|{formatted_value}'
-                        qualifiers.append(qs_qualifier)
-                        
+                        qualifier = f'|{col_name}|{formatted_value}'
+                        if last_real_idx is not None:
+                            qs_commands[last_real_idx] += qualifier
+                        elif main_statement:
+                            main_statement += qualifier
                     else:
+                        statement = f'{prefix}|{col_name}|{formatted_value}'
                         if not main_statement:
-                            main_statement = f'{prefix}|{col_name}|{formatted_value}'
+                            main_statement = statement
+                            # main_statement è separato, last_real_idx rimane None
                         else:
-                            qs_commands.append(f'{prefix}|{col_name}|{formatted_value}')
+                            qs_commands.append(statement)
+                            last_real_idx = len(qs_commands) - 1
                 
                 if not qid_value:
                     write_file.write('CREATE\n')
-                    
+
                 if main_statement:
-                    full_command = main_statement + "".join(qualifiers)
-                    write_file.write(f'{full_command}\n')
-                
+                    write_file.write(f'{main_statement}\n')
+
                 for cmd in qs_commands:
                     write_file.write(f'{cmd}\n')
                     
