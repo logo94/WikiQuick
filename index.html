@@ -476,8 +476,8 @@
     const SITELINK_FIELDS = ["itwiki","enwiki","frwiki","dewiki","commonswiki","itwikisource","enwikisource"];
 
     const TYPE_OPTIONS = [
+    ["item", "Item / QID"],    
     ["string", "String"],
-    ["item", "Item / QID"],
     ["number", "Number"],
     ["date", "Date (point in time)"],
     ["edtf", "Date (EDTF)"],
@@ -566,7 +566,7 @@
     const looksDate = samples.some((v) => /^\d{4}(-\d{1,2}(-\d{1,2})?)?$/.test(v.trim()));
     if (name.toLowerCase() === "qid") return "item";
     if (looksDate) return "date";
-    return "string";
+    return "item";
     }
 
     function buildColMeta() {
@@ -677,23 +677,46 @@
     }
 
     function formatDate(raw) {
-    const clean = raw.trim().replace(/[/.]/g, "-");
-
-    // solo anno, 1-4 cifre, con zero-padding
-    if (/^\d{1,4}$/.test(clean)) {
-        return { value: `+${clean.padStart(4, "0")}-00-00T00:00:00Z/9`, ok: true };
+    let clean = raw.trim().replace(/[/.]/g, "-");
+    
+    let sign = "+";
+    if (clean.startsWith("-")) {
+        sign = "-";
+        clean = clean.slice(1);
     }
-
+    
+    // Partial dates with X: 15XX (century), 152X (decade), 1XXX (millennium).
+    // Must be before the digits-only branch. Precision from the number of known digits.
+    const xMatch = clean.match(/^(\d+)(X+)$/i);
+    if (xMatch) {
+        const digits = xMatch[1];
+        const total = digits.length + xMatch[2].length;
+        if (total !== 4) return { value: "", ok: false, err: "an X-year must have 4 total characters (e.g. 15XX)" };
+        const precByKnown = { 4: 9, 3: 8, 2: 7, 1: 6 };
+        const prec = precByKnown[digits.length];
+        if (!prec) return { value: "", ok: false, err: "too many X" };
+        const year = digits.padEnd(4, "0");   // "15" -> "1500", "152" -> "1520"
+        return { value: `${sign}${year}-00-00T00:00:00Z/${prec}`, ok: true };
+    }
+    
+    // full year, 1-4 digits, zero-padded
+    if (/^\d{1,4}$/.test(clean)) {
+        return { value: `${sign}${clean.padStart(4, "0")}-00-00T00:00:00Z/9`, ok: true };
+    }
+    
+    // From here on the BCE sign is not supported (full calendar dates are CE only).
+    if (sign === "-") return { value: "", ok: false, err: "BCE only supported for years and centuries" };
+    
     let y, m, d, prec, mo;
     if ((mo = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) { y = mo[1]; m = mo[2]; d = mo[3]; prec = 11; }
     else if ((mo = clean.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/))) { d = mo[1]; m = mo[2]; y = mo[3]; prec = 11; }
     else if ((mo = clean.match(/^(\d{4})-(\d{1,2})$/))) { y = mo[1]; m = mo[2]; d = "00"; prec = 10; }
     else return { value: "", ok: false };
-
+    
     const mi = +m, di = +d;
     if (prec >= 10 && (mi < 1 || mi > 12)) return { value: "", ok: false };
     if (prec === 11 && (di < 1 || di > 31)) return { value: "", ok: false };
-
+    
     const mm = String(mi).padStart(2, "0");
     if (prec === 10) return { value: `+${y}-${mm}-00T00:00:00Z/10`, ok: true };
     const dd = String(di).padStart(2, "0");
@@ -717,8 +740,6 @@
         });
         const prefix = qid || "LAST";
 
-        // Fedele alla logica Python: main_statement separato + qs_commands,
-        // con lastRealIdx = ultimo statement reale (non-alias) a cui agganciare i qualificatori.
         let mainStatement = "";
         const qsCommands = [];
         let lastRealIdx = null;
